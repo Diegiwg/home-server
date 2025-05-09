@@ -1,0 +1,74 @@
+---
+- name: Docker | Update system packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: true
+
+- name: Docker | Ensure dependencies are installed
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - ca-certificates
+    - curl
+    - gnupg
+    - lsb-release
+
+- name: Docker | Docker GPG details
+  ansible.builtin.set_fact:
+    docker_base_url: https://download.docker.com/linux/ubuntu
+    docker_gpg_key_url: https://download.docker.com/linux/ubuntu/gpg
+    docker_gpg_key_path: /etc/apt/keyrings/docker.gpg
+
+- name: Docker | Ensure keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Docker | Download temporary GPG key
+  ansible.builtin.get_url:
+    url: "{{ docker_gpg_key_url }}"
+    dest: /tmp/docker.gpg
+    mode: "0644"
+
+- name: Docker | Convert GPG key to apt format (dearmor)
+  ansible.builtin.command: "gpg --dearmor -o {{ docker_gpg_key_path }} /tmp/docker.gpg"
+  args:
+    creates: "{{ docker_gpg_key_path }}"
+
+- name: Docker | Adjust GPG key permissions
+  ansible.builtin.file:
+    path: "{{ docker_gpg_key_path }}"
+    mode: "0644"
+
+- name: Docker | Remove temporary GPG key
+  ansible.builtin.file:
+    path: /tmp/docker.gpg
+    state: absent
+
+- name: Docker | Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch={{ ansible_architecture }} signed-by={{ docker_gpg_key_path }}] {{ docker_base_url }} {{ ansible_lsb.codename }} stable"
+    state: present
+    filename: docker
+
+- name: Docker | Ensure Docker is installed
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+
+- name: Docker | Ensure Docker is running
+  ansible.builtin.service:
+    name: docker
+    state: started
+
+- name: Docker | Ensure current user is in docker group
+  ansible.builtin.user:
+    name: "{{ inventory_hostname }}"
+    group: docker

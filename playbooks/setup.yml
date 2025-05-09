@@ -1,0 +1,10 @@
+---
+- name: Setup | Home Server
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Setup | Docker
+      ansible.builtin.include_role:
+        name: docker
+        tasks_from: docker-install

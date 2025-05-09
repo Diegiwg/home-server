@@ -1,0 +1,15 @@
+---
+- name: ruby | Ensure Ruby is installed
+  ansible.builtin.package:
+    name: ruby
+    state: present
+
+- name: ruby | Get installed Ruby version
+  ansible.builtin.shell:
+    cmd: ruby --version
+  register: version
+  changed_when: false
+
+- name: ruby | Show Ruby version
+  ansible.builtin.debug:
+    msg: "{{ version.stdout }}"
